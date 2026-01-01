@@ -1,24 +1,26 @@
 package com.example.oauth2_learn_app;
 
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final CustomOidcUserService customOidcUserService;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    // Constructor injection for the custom OIDC user service
-    public SecurityConfig(CustomOidcUserService customOidcUserService) {
-        this.customOidcUserService = customOidcUserService;
-    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -37,23 +39,27 @@ public class SecurityConfig {
                         .requestMatchers("/", "/login", "/api/user").permitAll() // Public endpoints
                         .anyRequest().authenticated() // All other endpoints require authentication
                 )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 // Configure OAuth2 login
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
                                 // Use the custom OIDC user service to process user info
                                 .oidcUserService(customOidcUserService)
-                        )
-                        // Redirect to the frontend after successful login
-                        .defaultSuccessUrl("http://localhost:5173", true)
+                        ).successHandler(oAuth2LoginSuccessHandler)
+                        // Redirect to the frontend after successful login (session-based)
+//                        .defaultSuccessUrl("http://localhost:5173", true)
                 )
-                // Configure logout behavior
-                .logout(logout -> logout
-                        .logoutSuccessUrl("http://localhost:5173/login") // Redirect after logout
-                        .invalidateHttpSession(true) // Invalidate session
-                        .clearAuthentication(true) // Clear authentication
-                        .deleteCookies("JSESSIONID") // Delete session cookie
-                        .permitAll() // Allow logout for all users
-                )
+                // Configure logout behavior (session-based)
+//                .logout(logout -> logout
+//                        .logoutSuccessUrl("http://localhost:5173/login") // Redirect after logout
+//                        .invalidateHttpSession(true) // Invalidate session
+//                        .clearAuthentication(true) // Clear authentication
+//                        .deleteCookies("JSESSIONID") // Delete session cookie
+//                        .permitAll() // Allow logout for all users
+//                )
                 // Configure exception handling for unauthorized and forbidden requests
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
