@@ -35,92 +35,16 @@ const Login: FC = () => {
     }
   }, [isAuthenticated, navigate, fromLocation]);
 
-  /**
-   * Opens an OAuth login popup and waits for JWT token from popup message
-   * @param url - The OAuth provider URL
-   * @returns Promise resolving to JWT token
-   */
-  const openOAuthPopup = (url: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const left = window.screen.width / 2 - POPUP_WIDTH / 2;
-      const top = window.screen.height / 2 - POPUP_HEIGHT / 2;
-
-      const popup = window.open(
-        url,
-        'OAuth2 Login',
-        `width=${POPUP_WIDTH},height=${POPUP_HEIGHT},top=${top},left=${left}`
-      );
-
-      if (!popup) {
-        reject(new Error('Failed to open popup. Please check if popups are blocked.'));
-        return;
-      }
-
-      let isResolved = false;
-
-      // Listen for message from popup
-      const messageListener = (event: MessageEvent<OAuthPopupMessage>): void => {
-        if (event.origin !== OAUTH_ORIGIN) {
-          return;
-        }
-
-        if (event.data.token) {
-          isResolved = true;
-          console.log('Received token from popup:', event.data.token);
-          resolve(event.data.token);
-          cleanup();
   
-        } else if (event.data.error) {
-          isResolved = true;
-          reject(new Error(event.data.error));
-          cleanup();
-          try {
-            popup.close();
-          } catch (e) {
-            // Popup might already be closed
-          }
-        }
-      };
 
-      // Timeout after 1 minutes
-      const timeout = setTimeout(() => {
-        if (!isResolved) {
-          cleanup();
-          reject(new Error('OAuth login timed out. Please try again.'));
-        }
-      }, 60*1000);
-
-      const cleanup = () => {
-        clearTimeout(timeout);
-        window.removeEventListener('message', messageListener);
-      };
-
-      window.addEventListener('message', messageListener);
-    });
+  const handleGoogleLogin = (): void => {
+    window.location.href = "http://localhost:8080/oauth2/authorization/google";
   };
 
-  const handleGoogleLogin = async (): Promise<void> => {
-    try {
-      console.log('Bắt đầu quá trình đăng nhập với Google...');
-      const token = await openOAuthPopup(GOOGLE_OAUTH_URL);
-      localStorage.setItem('jwt', token);
-      console.log('Đăng nhập thành công với Google');
+  const handleGithubLogin = (): void => {
 
-    } catch (err) {
-      console.error('Google login failed:', err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
-
-  const handleGithubLogin = async (): Promise<void> => {
-    try {
-      console.log('Bắt đầu quá trình đăng nhập với Github...');
-      const token = await openOAuthPopup(GITHUB_OAUTH_URL);
-      localStorage.setItem('jwt', token);
-      console.log('Đăng nhập thành công với Github');
-    } catch (err) {
-      console.error('Github login failed:', err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
+  }
+  
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
