@@ -1,4 +1,6 @@
 import { useSearchParams } from "react-router-dom"
+
+// redirect-based login token is in the URL query param "token"
 export default function LoginCallBack() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get("token");

@@ -1,5 +1,6 @@
 package com.example.oauth2_learn_app;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
@@ -12,6 +13,7 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     public OAuth2LoginSuccessHandler(JwtService jwtService) {
         this.jwtService = jwtService;
@@ -39,6 +41,21 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 //    }
 
     // using redirect (token is in url) to do oauth2 login
+//    @Override
+//    public void onAuthenticationSuccess(
+//            HttpServletRequest request,
+//            HttpServletResponse response,
+//            Authentication authentication
+//    ) throws IOException {
+//        OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
+//        String token = jwtService.generateToken(oidcUser.getEmail());
+//
+//        // Redirect to frontend with token as query parameter
+//        String redirectUrl = "http://localhost:5173/oauth2/callback?token=" + token;
+//        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+//    }
+
+    // using httpOnly cookie to send refresh token
     @Override
     public void onAuthenticationSuccess(
             HttpServletRequest request,
@@ -47,11 +64,18 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     ) throws IOException {
         OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
         String token = jwtService.generateToken(oidcUser.getEmail());
-
-        // Redirect to frontend with token as query parameter
-        String redirectUrl = "http://localhost:5173/oauth2/callback?token=" + token;
-        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
-    }
+        // Set token in HttpOnly cookie
+        RefreshToken refreshToken = refreshTokenService.create(oidcUser.getEmail());
+        Cookie cookie = new Cookie("refreshToken", refreshToken.getToken());
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/auth/refresh");
+        cookie.setMaxAge(7 * 24 * 60 * 60);
+        response.addCookie(cookie);
+        // redirect về frontend
+        response.sendRedirect(
+                "http://localhost:3000/oauth2/redirect"
+        );
 
 }
 
