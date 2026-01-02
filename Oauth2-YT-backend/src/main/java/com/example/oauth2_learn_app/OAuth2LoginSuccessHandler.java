@@ -17,24 +17,41 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         this.jwtService = jwtService;
     }
 
+    // using popup window to do oauth2 login
+//    @Override
+//    public void onAuthenticationSuccess(
+//            HttpServletRequest request,
+//            HttpServletResponse response,
+//            Authentication authentication
+//    ) throws IOException {
+//
+//        OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
+//        String token = jwtService.generateToken(oidcUser.getEmail());
+//
+//        // Send JS script that posts token to opener window
+//        response.setContentType("text/html");
+//        response.getWriter().write("""
+//            <script>
+//                window.opener.postMessage({ token: '%s' }, 'http://localhost:5173');
+//                window.close();
+//            </script>
+//            """.formatted(token));
+//    }
+
+    // using redirect (token is in url) to do oauth2 login
     @Override
     public void onAuthenticationSuccess(
             HttpServletRequest request,
             HttpServletResponse response,
             Authentication authentication
     ) throws IOException {
-
         OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
         String token = jwtService.generateToken(oidcUser.getEmail());
 
-        // Send JS script that posts token to opener window
-        response.setContentType("text/html");
-        response.getWriter().write("""
-            <script>
-                window.opener.postMessage({ token: '%s' }, 'http://localhost:5173');
-                window.close();
-            </script>
-            """.formatted(token));
+        // Redirect to frontend with token as query parameter
+        String redirectUrl = "http://localhost:5173/oauth2/callback?token=" + token;
+        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
+
 }
 
